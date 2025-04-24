@@ -6,15 +6,17 @@ This module coordinates the scanning process and handles the overall workflow.
 import argparse
 import sys
 import os
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Generator
 from datetime import datetime
 import requests
+from itertools import chain
 
 from src.utils.file_utils import load_usernames, load_passwords
 from src.scanners.user_enum import detect_user_enumeration
 from src.scanners.brute_force import detect_bruteforce
 from src.output.save_results import save_results, create_results
 from src.utils.logger_config import setup_logger, logger
+from src.utils.memory_monitor import MemoryMonitor
 
 def validate_url(url: str) -> None:
     """
@@ -66,6 +68,9 @@ def main():
         parser.add_argument('--output', help='Path to output file (optional)')
         parser.add_argument('--delay', type=int, default=1, help='Delay between requests in seconds')
         parser.add_argument('--max-attempts', type=int, default=5, help='Maximum number of brute force attempts')
+        parser.add_argument('--chunk-size', type=int, default=1000, help='Number of items to process at once')
+        parser.add_argument('--memory-limit', type=int, help='Maximum memory usage in MB')
+        parser.add_argument('--max-workers', type=int, default=5, help='Maximum number of worker threads')
         parser.add_argument('--debug', action='store_true', help='Enable debug logging')
         parser.add_argument('--log-file', help='Path to log file (optional)')
         
@@ -76,40 +81,66 @@ def main():
         logger.info("Starting WordPress vulnerability scanner")
         logger.debug(f"Command line arguments: {vars(args)}")
 
+        # Initialize memory monitor
+        memory_monitor = MemoryMonitor(
+            memory_limit_mb=args.memory_limit,
+            check_interval=100  # Check memory every 100 operations
+        )
+
         # Validate inputs
         logger.info("Validating inputs...")
         validate_url(args.url)
         validate_file(args.userlist, "Usernames")
         validate_file(args.passlist, "Passwords")
         
-        # Load usernames and passwords
+        # Load usernames and passwords as chunked generators
         logger.info("Loading usernames and passwords...")
-        usernames = load_usernames(args.userlist)
-        passwords = load_passwords(args.passlist)
+        username_chunks = load_usernames(args.userlist, chunk_size=args.chunk_size)
+        password_chunks = load_passwords(args.passlist, chunk_size=args.chunk_size)
         
-        if not usernames:
+        # Check if generators are empty
+        try:
+            first_username_chunk = next(username_chunks)
+            username_chunks = chain([first_username_chunk], username_chunks)  # Reconstruct generator
+            memory_monitor.check_memory_usage()
+        except StopIteration:
             logger.error("No usernames loaded. Exiting.")
             return
-        if not passwords:
+            
+        try:
+            first_password_chunk = next(password_chunks)
+            password_chunks = chain([first_password_chunk], password_chunks)  # Reconstruct generator
+            memory_monitor.check_memory_usage()
+        except StopIteration:
             logger.error("No passwords loaded. Exiting.")
             return
         
-        logger.info(f"Loaded {len(usernames)} usernames and {len(passwords)} passwords")
-        
         # Step 1: Detect User Enumeration
         logger.info("Checking for user enumeration vulnerability...")
-        user_enum_detected, valid_usernames = detect_user_enumeration(args.url, usernames, delay=args.delay)
+        user_enum_detected, valid_usernames = detect_user_enumeration(
+            args.url, 
+            username_chunks, 
+            delay=args.delay,
+            max_workers=args.max_workers,
+            memory_monitor=memory_monitor
+        )
         
         # Step 2: If User Enumeration is successful, run Brute Force scan
         brute_force_detected, usernames_tested, credentials_found = False, [], []
         if user_enum_detected:
             logger.info("User enumeration detected. Attempting brute force with valid usernames...")
+            # Convert valid_usernames list to a generator yielding chunks
+            def valid_username_chunks():
+                yield valid_usernames
+            
             brute_force_detected, usernames_tested, credentials_found = detect_bruteforce(
                 target_url=args.url,
-                usernames=valid_usernames,
-                passwords=passwords,
+                username_chunks=valid_username_chunks(),
+                password_chunks=password_chunks,
                 delay=args.delay,
-                max_attempts=args.max_attempts
+                max_attempts=args.max_attempts,
+                max_workers=args.max_workers,
+                memory_monitor=memory_monitor
             )
         
         # Step 3: Format the results in the expected structure
@@ -134,6 +165,9 @@ def main():
         sys.exit(1)
     except (FileNotFoundError, PermissionError) as e:
         logger.error(f"{e}")
+        sys.exit(1)
+    except MemoryError as e:
+        logger.error(f"Memory limit exceeded: {e}")
         sys.exit(1)
     except argparse.ArgumentError as e:
         logger.error(f"Invalid argument: {e}")

@@ -1,0 +1,26 @@
+2025-04-24 15:15:10 - INFO - main.py:81 - Starting WordPress vulnerability scanner
+2025-04-24 15:15:10 - DEBUG - main.py:82 - Command line arguments: {'url': 'http://localhost/wordpress/', 'userlist': 'data/test_usernames.txt', 'passlist': 'data/passwords.txt', 'output': None, 'delay': 2, 'max_attempts': 5, 'chunk_size': 1000, 'memory_limit': None, 'max_workers': 5, 'debug': True, 'log_file': 'logs/scan.log'}
+2025-04-24 15:15:10 - INFO - main.py:91 - Validating inputs...
+2025-04-24 15:15:10 - DEBUG - main.py:31 - Validating URL: http://localhost/wordpress/
+2025-04-24 15:15:10 - DEBUG - main.py:34 - URL validation successful
+2025-04-24 15:15:10 - DEBUG - main.py:48 - Validating Usernames file: data/test_usernames.txt
+2025-04-24 15:15:10 - DEBUG - main.py:53 - Usernames file validation successful
+2025-04-24 15:15:10 - DEBUG - main.py:48 - Validating Passwords file: data/passwords.txt
+2025-04-24 15:15:10 - DEBUG - main.py:53 - Passwords file validation successful
+2025-04-24 15:15:10 - INFO - main.py:97 - Loading usernames and passwords...
+2025-04-24 15:15:10 - DEBUG - file_utils.py:35 - File size check passed: data/test_usernames.txt (0.00MB)
+2025-04-24 15:15:10 - DEBUG - file_utils.py:35 - File size check passed: data/test_usernames.txt (0.00MB)
+2025-04-24 15:15:10 - DEBUG - file_utils.py:35 - File size check passed: data/passwords.txt (0.00MB)
+2025-04-24 15:15:10 - DEBUG - file_utils.py:35 - File size check passed: data/passwords.txt (0.00MB)
+2025-04-24 15:15:10 - INFO - main.py:119 - Checking for user enumeration vulnerability...
+2025-04-24 15:15:10 - WARNING - user_enum.py:65 - Valid username found: admin
+2025-04-24 15:15:12 - WARNING - user_enum.py:122 - User enumeration vulnerability detected! Found 1 valid usernames
+2025-04-24 15:15:12 - INFO - main.py:131 - User enumeration detected. Attempting brute force with valid usernames...
+2025-04-24 15:15:13 - WARNING - brute_force.py:70 - Valid credentials found: admin:admin123
+2025-04-24 15:15:13 - WARNING - brute_force.py:70 - Valid credentials found: admin:test123
+2025-04-24 15:15:13 - WARNING - brute_force.py:70 - Valid credentials found: admin:password123
+2025-04-24 15:15:13 - WARNING - brute_force.py:70 - Valid credentials found: admin:demo123
+2025-04-24 15:15:13 - WARNING - brute_force.py:70 - Valid credentials found: admin:welcome123
+2025-04-24 15:15:15 - INFO - brute_force.py:214 - Reached maximum attempts (5). Stopping.
+2025-04-24 15:15:15 - INFO - save_results.py:77 - Results saved to output/scan_20250424_151515.json
+2025-04-24 15:15:15 - INFO - main.py:158 - Scan completed. Results saved to output/scan_20250424_151515.json
