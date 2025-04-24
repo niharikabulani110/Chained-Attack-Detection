@@ -1,0 +1,19 @@
+{
+  "target": "http://example-wp.com",
+  "vulnerabilities": [
+    {
+      "type": "User Enumeration",
+      "detected": false,
+      "vector": "/wp-login.php",
+      "confidence": "medium"
+    },
+    {
+      "type": "Brute-force Login",
+      "detected": false,
+      "vector": "/wp-login.php",
+      "usernames_tested": [],
+      "credentials_found": [],
+      "confidence": "medium"
+    }
+  ]
+}
