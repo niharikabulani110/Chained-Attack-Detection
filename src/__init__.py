@@ -1,3 +1,0 @@
-"""
-WordPress Vulnerability Scanner package.
-"""
